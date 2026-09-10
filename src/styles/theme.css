@@ -1,0 +1,78 @@
+/**
+ * Design tokens. Everything visual reads from these, so a theme is a variable
+ * swap and nothing more.
+ *
+ * `--canvas` is load-bearing beyond styling: `export/exportSvg.ts` reads its
+ * computed value to paint the background rect of an exported PNG/SVG, because a
+ * transparent PNG looks broken in most chat apps.
+ *
+ * Theme is applied as `data-theme` on <html> by App.tsx (and pre-set in
+ * index.html so the first paint isn't the wrong colour).
+ */
+:root {
+  /* --- surfaces --- */
+  --bg: #f2eee7;
+  --canvas: #faf7f2;
+  --panel: #ffffff;
+  --panel-2: #f6f2ec;
+  --line: #e3ddd3;
+
+  /* --- artwork --- */
+  --ground: #e7dccc;
+  --shadow: #b6a48b;
+
+  /* --- ink --- */
+  --ink: #2a2622;
+  --ink-2: #6f675d;
+  --ink-3: #9b9287;
+
+  /* --- intent --- */
+  --accent: #b06148;
+  --accent-soft: #f0e0d8;
+  --on-accent: #fffaf7;
+  --danger: #bd4738;
+  --danger-soft: #f6e0dc;
+
+  /* --- geometry & depth --- */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 32%, transparent);
+  --lift-1: 0 1px 2px rgb(41 33 26 / 8%);
+  --lift-2: 0 6px 20px -6px rgb(41 33 26 / 22%);
+  --lift-3: 0 18px 44px -14px rgb(41 33 26 / 30%);
+
+  /* --- type --- */
+  --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Inter, Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #15171a;
+  --canvas: #1d2024;
+  --panel: #23272c;
+  --panel-2: #2a2f35;
+  --line: #343a41;
+
+  --ground: #2b3037;
+  --shadow: #07090b;
+
+  --ink: #edeae5;
+  --ink-2: #a4a9af;
+  --ink-3: #7c828a;
+
+  --accent: #d68a6c;
+  --accent-soft: #3a2c26;
+  --on-accent: #1b1512;
+  --danger: #e0685a;
+  --danger-soft: #3b2320;
+
+  --lift-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --lift-2: 0 6px 20px -6px rgb(0 0 0 / 55%);
+  --lift-3: 0 18px 44px -14px rgb(0 0 0 / 65%);
+
+  color-scheme: dark;
+}
