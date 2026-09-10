@@ -15,7 +15,7 @@
  */
 import LZString from 'lz-string';
 import type { Doc } from '../types';
-import { MATERIALS, PATTERNS } from '../types';
+import { MATERIALS, PATTERNS, TEXT_FONTS, TEXT_PLACEMENTS } from '../types';
 import { normalizeDoc } from './normalize';
 
 /** Bump only if the positional layout below changes. */
@@ -41,11 +41,26 @@ type PackedFlower = [
 
 type PackedVase = [string, number, number, string, string, number, number];
 
-type Packed = [number, number, PackedVase, PackedFlower[]];
+type PackedText = [
+  string, // content
+  number, // placement index
+  number, // font index
+  string, // colour (no #)
+  number, // size * 100
+];
+
+/**
+ * `text` is APPENDED, and omitted entirely when there is no note. That keeps
+ * this backward and forward compatible without a version bump: links written
+ * before notes existed decode with `text` undefined and pick up defaults, and
+ * an older client reading a newer link simply ignores the extra element.
+ */
+type Packed = [number, number, PackedVase, PackedFlower[], PackedText?];
 
 function pack(doc: Doc): Packed {
   const v = doc.vase;
-  return [
+  const t = doc.text;
+  const base: Packed = [
     CODEC_VERSION,
     doc.theme === 'dark' ? 1 : 0,
     [
@@ -71,11 +86,22 @@ function pack(doc: Doc): Packed {
       f.z === null ? null : q(f.z, 1000),
     ]),
   ];
+
+  if (t.content.length > 0) {
+    base[4] = [
+      t.content,
+      Math.max(0, TEXT_PLACEMENTS.indexOf(t.placement)),
+      Math.max(0, TEXT_FONTS.indexOf(t.font)),
+      hex(t.color),
+      q(t.size, 100),
+    ];
+  }
+  return base;
 }
 
 function unpack(raw: unknown): unknown {
   if (!Array.isArray(raw)) return null;
-  const [version, themeFlag, vase, flowers] = raw as Packed;
+  const [version, themeFlag, vase, flowers, text] = raw as Packed;
   if (version !== CODEC_VERSION || !Array.isArray(vase)) return null;
 
   return {
@@ -101,6 +127,16 @@ function unpack(raw: unknown): unknown {
       colors: { petal: unhex(f[7]), accent: unhex(f[8]), stem: unhex(f[9]) },
       z: f[10] === null || f[10] === undefined ? null : f[10] / 1000,
     })),
+    // Left undefined for older links; `normalizeText` supplies the defaults.
+    text: Array.isArray(text)
+      ? {
+          content: text[0],
+          placement: TEXT_PLACEMENTS[text[1]],
+          font: TEXT_FONTS[text[2]],
+          color: unhex(text[3]),
+          size: text[4] / 100,
+        }
+      : undefined,
   };
 }
 

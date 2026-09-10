@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import '../src/catalog';
 import { __resetCoalescing, useVase } from '../src/store/store';
 import { allFlowerTypes, allVaseTypes, getVaseTypeOrFirst } from '../src/catalog/registry';
-import { LIMITS } from '../src/lib/normalize';
+import { LIMITS, TEXT_DEFAULTS } from '../src/lib/normalize';
 import { DEPTH_BOUNDS } from '../src/render/vaseGeometry';
 import { PRESETS } from '../src/presets';
 import type { Doc } from '../src/types';
@@ -32,6 +32,7 @@ const emptyDoc = (): Doc => ({
     width: 1,
   },
   flowers: [],
+  text: TEXT_DEFAULTS,
 });
 
 beforeEach(() => {

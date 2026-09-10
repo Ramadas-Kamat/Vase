@@ -16,6 +16,9 @@ arrangement looks right. Then export it as a PNG, an SVG, a JSON file, or a link
   dots and terrazzo.
 - **Direct manipulation** — drag a flower from the tray to place it, drag a stem
   in the vase to move it, right-click for z-order and duplicate.
+- **A customisable note** — write a message and place it on the vase, on a gift
+  tag, on a note card tucked into the arrangement, or as a caption underneath.
+  Four fonts, any colour, adjustable size.
 - **Procedural variation** — every stem is generated from a seed, so two flowers
   with identical settings still look hand-picked. "Vary shape" re-rolls the seed.
 - **Undo and redo** — 80 steps deep, with continuous drags collapsed into a
@@ -103,6 +106,13 @@ flower's `seed` via `lib/rng.ts`, never `Math.random()` at render time. A seeded
 flower redraws identically on reload and survives a round trip through a share
 link.
 
+A second, easy to trip over: **anything drawn into the scene must be styled with
+SVG presentation attributes, not CSS classes.** `export/exportSvg.ts` resolves
+`var()` only in attributes, and a standalone SVG file carries no stylesheet, so
+class-based styling silently disappears from exported PNG and SVG files. For the
+same reason, only system font stacks are used — a webfont would not be embedded
+in the SVG, and would taint the PNG export canvas. See `render/VaseText.tsx`.
+
 ## Adding a flower
 
 Copy [`src/catalog/flowers/_template.tsx`](src/catalog/flowers/_template.tsx) to
@@ -163,13 +173,16 @@ material and pattern without another line of code.
   after you stop editing.
 - **Boot order** — a share link in the URL hash wins, then `localStorage`, then
   the first starter arrangement.
-- **Share link** — *Share → Copy link* compresses the document into the URL hash
-  with `lz-string`. Links over 2000 characters are refused, since some clients
-  truncate them; save a JSON file for very large arrangements instead.
-- **JSON** — *Save JSON* and *Open JSON…* round-trip the document. Imports are
-  normalised, so a file referring to a flower type that no longer exists loads
-  what it can and reports what it dropped.
-- **PNG and SVG** — exported from the live scene.
+- **Share link** — *Share & download → Copy link* compresses the document into
+  the URL hash with `lz-string`. Links over 2000 characters are refused, since
+  some clients truncate them; save a JSON file for very large arrangements
+  instead. A note is appended to the payload and omitted entirely when empty, so
+  links written before notes existed still open, and adding a note costs nothing
+  unless you use one.
+- **JSON** — *Download JSON file* and *Open JSON…* round-trip the document.
+  Imports are normalised, so a file referring to a flower type that no longer
+  exists loads what it can and reports what it dropped.
+- **PNG and SVG** — exported from the live scene, note included.
 
 Limits: 24 stems is a soft cap the UI warns about, 40 is a hard cap, both defined
 in `lib/normalize.ts` to protect the 60fps target.

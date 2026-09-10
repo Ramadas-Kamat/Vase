@@ -12,7 +12,17 @@
  * flower is just data.)
  */
 import type { FC } from 'react';
-import { MATERIALS, PATTERNS, type Capability, type Material, type Pattern } from '../types';
+import {
+  MATERIALS,
+  PATTERNS,
+  TEXT_FONTS,
+  TEXT_PLACEMENTS,
+  type Capability,
+  type Material,
+  type Pattern,
+  type TextFont,
+  type TextPlacement,
+} from '../types';
 import { allVaseTypes, getFlowerType, getVaseTypeOrFirst } from '../catalog/registry';
 import { useVase } from '../store/store';
 import { LIMITS } from '../lib/normalize';
@@ -59,6 +69,30 @@ const PATTERN_LABELS: Record<Pattern, string> = {
   terrazzo: 'Terrazzo',
 };
 
+const PLACEMENT_LABELS: Record<TextPlacement, string> = {
+  vase: 'On vase',
+  tag: 'Gift tag',
+  note: 'Note card',
+  caption: 'Caption',
+};
+
+const FONT_LABELS: Record<TextFont, string> = {
+  serif: 'Serif',
+  sans: 'Sans',
+  script: 'Script',
+  mono: 'Mono',
+};
+
+const TEXT_SWATCHES = [
+  '#5c5346',
+  '#2f2a24',
+  '#8a5a2b',
+  '#4f7346',
+  '#8d2050',
+  '#3f4a52',
+  '#ffffff',
+];
+
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const deg = (v: number) => `${Math.round(v)}°`;
 
@@ -71,6 +105,7 @@ export const Properties: FC<PropertiesProps> = ({ onRequestRemove }) => {
   const selectedId = useVase((s) => s.selectedId);
   const setVase = useVase((s) => s.setVase);
   const setVaseShape = useVase((s) => s.setVaseShape);
+  const setText = useVase((s) => s.setText);
   const updateFlower = useVase((s) => s.updateFlower);
   const duplicateFlower = useVase((s) => s.duplicateFlower);
   const bringToFront = useVase((s) => s.bringToFront);
@@ -227,6 +262,7 @@ export const Properties: FC<PropertiesProps> = ({ onRequestRemove }) => {
 
   // ------------------------------------------------------------------ vase ---
   const vase = doc.vase;
+  const text = doc.text;
   const vaseType = getVaseTypeOrFirst(vase.shapeId);
   const showAccent = vase.pattern !== 'none' || vase.material === 'gradient';
   const overCapacity = doc.flowers.length > vaseType.capacityHint;
@@ -312,6 +348,59 @@ export const Properties: FC<PropertiesProps> = ({ onRequestRemove }) => {
           format={pct}
           onChange={(width) => setVase({ width }, 'vase-width')}
         />
+      </PanelSection>
+
+      <PanelSection title="Note" hint="Leave this empty for no note.">
+        <div className="field">
+          <label className="field-label" htmlFor="note-content">
+            <span>Message</span>
+            <span className="field-value mono">
+              {text.content.length}/{LIMITS.textMaxLength}
+            </span>
+          </label>
+          <textarea
+            id="note-content"
+            className="text-input"
+            rows={2}
+            maxLength={LIMITS.textMaxLength}
+            placeholder="Happy birthday…"
+            value={text.content}
+            onChange={(e) => setText({ content: e.target.value }, 'note-content')}
+          />
+        </div>
+
+        {text.content.trim().length > 0 && (
+          <>
+            <SegmentedField
+              label="Placement"
+              value={text.placement}
+              options={TEXT_PLACEMENTS}
+              labels={PLACEMENT_LABELS}
+              onChange={(placement) => setText({ placement })}
+            />
+            <SegmentedField
+              label="Font"
+              value={text.font}
+              options={TEXT_FONTS}
+              labels={FONT_LABELS}
+              onChange={(font) => setText({ font })}
+            />
+            <ColorField
+              label="Colour"
+              value={text.color}
+              swatches={TEXT_SWATCHES}
+              onChange={(color) => setText({ color }, 'note-color')}
+            />
+            <SliderField
+              label="Size"
+              value={text.size}
+              min={LIMITS.textSize.min}
+              max={LIMITS.textSize.max}
+              format={pct}
+              onChange={(size) => setText({ size }, 'note-size')}
+            />
+          </>
+        )}
       </PanelSection>
 
       <p className="panel-hint panel-hint-foot">

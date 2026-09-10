@@ -12,8 +12,28 @@ export type Material = 'matte' | 'gloss' | 'glass' | 'gradient';
 export type Pattern = 'none' | 'stripes' | 'dots' | 'terrazzo';
 export type Theme = 'light' | 'dark';
 
+/** Where a note is drawn. See `render/VaseText.tsx`. */
+export type TextPlacement = 'vase' | 'tag' | 'note' | 'caption';
+export type TextFont = 'serif' | 'sans' | 'script' | 'mono';
+
 export const MATERIALS: Material[] = ['matte', 'gloss', 'glass', 'gradient'];
 export const PATTERNS: Pattern[] = ['none', 'stripes', 'dots', 'terrazzo'];
+export const TEXT_PLACEMENTS: TextPlacement[] = ['vase', 'tag', 'note', 'caption'];
+export const TEXT_FONTS: TextFont[] = ['serif', 'sans', 'script', 'mono'];
+
+/**
+ * An optional note shown with the arrangement. Empty `content` means "no note",
+ * so the rest of the settings survive being toggled off and back on.
+ */
+export interface DocText {
+  content: string;
+  placement: TextPlacement;
+  font: TextFont;
+  color: string;
+  /** Scale multiplier on the placement's base font size. */
+  size: number;
+}
+
 
 /**
  * A capability is a property the properties panel knows how to render a control
@@ -74,6 +94,7 @@ export interface Doc {
   theme: Theme;
   vase: VaseState;
   flowers: Flower[];
+  text: DocText;
 }
 
 export type Rng = () => number;

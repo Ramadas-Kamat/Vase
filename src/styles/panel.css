@@ -443,6 +443,28 @@
   gap: 7px;
 }
 
+.text-input {
+  width: 100%;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  resize: vertical;
+}
+
+.text-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.text-input::placeholder {
+  color: var(--ink-3);
+}
+
 .color-input {
   flex: 0 0 auto;
   width: 30px;

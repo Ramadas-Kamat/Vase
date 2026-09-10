@@ -14,8 +14,8 @@
 // registry. See catalog/index.ts.
 import '../catalog';
 import { create } from 'zustand';
-import type { Doc, Flower, Material, Pattern, Theme, VaseState } from '../types';
-import { LIMITS, makeFlower, normalizeDoc } from '../lib/normalize';
+import type { Doc, DocText, Flower, Material, Pattern, Theme, VaseState } from '../types';
+import { LIMITS, makeFlower, normalizeDoc, normalizeText } from '../lib/normalize';
 import { clamp } from '../lib/geom';
 import { allFlowerTypes, allVaseTypes, getVaseTypeOrFirst } from '../catalog/registry';
 import { DEPTH_BOUNDS } from '../render/vaseGeometry';
@@ -45,6 +45,9 @@ interface VaseSlice {
   setVaseShape: (shapeId: string) => void;
   setMaterial: (material: Material) => void;
   setPattern: (pattern: Pattern) => void;
+
+  // --- note ----------------------------------------------------------------
+  setText: (patch: Partial<DocText>, coalesceKey?: string) => void;
 
   // --- flowers -------------------------------------------------------------
   addFlower: (typeId: string, u?: number, depth?: number) => string | null;
@@ -123,6 +126,11 @@ export const useVase = create<VaseSlice>((set, get) => {
     setVase: (patch, coalesceKey) => {
       const { doc } = get();
       commit({ ...doc, vase: { ...doc.vase, ...patch } }, coalesceKey);
+    },
+
+    setText: (patch, coalesceKey) => {
+      const { doc } = get();
+      commit({ ...doc, text: normalizeText({ ...doc.text, ...patch }) }, coalesceKey);
     },
 
     /**
@@ -308,6 +316,8 @@ export const useVase = create<VaseSlice>((set, get) => {
           width: range(rng, 0.85, 1.15),
         },
         flowers: specs,
+        // Randomising the arrangement should not silently discard a note.
+        text: get().doc.text,
       });
     },
 

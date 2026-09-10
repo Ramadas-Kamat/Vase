@@ -7,8 +7,8 @@
  * crash, we drop unknown flowers and fall back on unknown vases, so old links
  * keep opening.
  */
-import type { Doc, Flower, FlowerColors, Theme, VaseState } from '../types';
-import { MATERIALS, PATTERNS } from '../types';
+import type { Doc, DocText, Flower, FlowerColors, Theme, VaseState } from '../types';
+import { MATERIALS, PATTERNS, TEXT_FONTS, TEXT_PLACEMENTS } from '../types';
 import { getFlowerType, getVaseTypeOrFirst } from '../catalog/registry';
 import { clamp } from './geom';
 import { normalizeHex } from './color';
@@ -21,12 +21,24 @@ export const LIMITS = {
   lean: { min: -26, max: 26 },
   vaseHeight: { min: 0.65, max: 1.45 },
   vaseWidth: { min: 0.65, max: 1.4 },
+  textSize: { min: 0.6, max: 1.8 },
+  /** Keeps a note inside the share-link budget and inside the artwork. */
+  textMaxLength: 80,
+  textMaxLines: 4,
   /** Above this the UI warns; arrangements still work. */
   softCap: 24,
   /** Refused beyond this — protects the 60fps target. */
   hardCap: 40,
   historyDepth: 80,
 } as const;
+
+export const TEXT_DEFAULTS: DocText = {
+  content: '',
+  placement: 'caption',
+  font: 'serif',
+  color: '#5c5346',
+  size: 1,
+};
 
 let idCounter = 0;
 
@@ -114,6 +126,26 @@ function normalizeVase(raw: unknown): VaseState {
  * Coerce arbitrary parsed JSON into a valid `Doc`. Never throws.
  * @returns the repaired document plus how many flowers had to be dropped
  */
+export function normalizeText(raw: unknown): DocText {
+  const o = (raw ?? {}) as Partial<DocText>;
+  const content = typeof o.content === 'string' ? o.content : '';
+  return {
+    // Collapse runaway blank lines first, then cap length, so a paste of a long
+    // document degrades to a sensible note rather than being rejected outright.
+    content: content
+      .split(/\r?\n/)
+      .slice(0, LIMITS.textMaxLines)
+      .join('\n')
+      .slice(0, LIMITS.textMaxLength),
+    placement: TEXT_PLACEMENTS.includes(o.placement as never)
+      ? o.placement!
+      : TEXT_DEFAULTS.placement,
+    font: TEXT_FONTS.includes(o.font as never) ? o.font! : TEXT_DEFAULTS.font,
+    color: normalizeHex(str(o.color, TEXT_DEFAULTS.color), TEXT_DEFAULTS.color),
+    size: clamp(num(o.size, TEXT_DEFAULTS.size), LIMITS.textSize.min, LIMITS.textSize.max),
+  };
+}
+
 export function normalizeDoc(raw: unknown): { doc: Doc; dropped: number } {
   const o = (raw ?? {}) as Partial<Doc>;
   const rawFlowers = Array.isArray(o.flowers) ? o.flowers : [];
@@ -130,7 +162,7 @@ export function normalizeDoc(raw: unknown): { doc: Doc; dropped: number } {
   const theme: Theme = o.theme === 'dark' ? 'dark' : 'light';
 
   return {
-    doc: { v: 1, theme, vase: normalizeVase(o.vase), flowers },
+    doc: { v: 1, theme, vase: normalizeVase(o.vase), flowers, text: normalizeText(o.text) },
     dropped,
   };
 }

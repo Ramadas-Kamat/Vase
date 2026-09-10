@@ -186,21 +186,22 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
         </button>
 
         <details className="menu" ref={menu}>
-          <summary className="btn btn-primary">Share</summary>
+          <summary className="btn btn-primary">Share &amp; download</summary>
           <div className="menu-panel" role="menu">
             <button type="button" role="menuitem" onClick={copyShareLink}>
               Copy link
             </button>
+            <hr />
             <button type="button" role="menuitem" onClick={exportPng}>
-              Download PNG
+              Download PNG image
             </button>
             <button type="button" role="menuitem" onClick={exportSvgFile}>
-              Download SVG
+              Download SVG vector
+            </button>
+            <button type="button" role="menuitem" onClick={exportJson}>
+              Download JSON file
             </button>
             <hr />
-            <button type="button" role="menuitem" onClick={exportJson}>
-              Save JSON
-            </button>
             <button
               type="button"
               role="menuitem"

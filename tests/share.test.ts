@@ -7,6 +7,7 @@
  * actually hands to another person, so failures are visible and embarrassing.
  */
 import { describe, expect, it } from 'vitest';
+import LZString from 'lz-string';
 import '../src/catalog';
 import { allFlowerTypes, allVaseTypes } from '../src/catalog/registry';
 import {
@@ -16,8 +17,8 @@ import {
   encodeShare,
   readShareFromHash,
 } from '../src/lib/share';
-import { LIMITS, makeFlower, normalizeDoc } from '../src/lib/normalize';
-import type { Doc, Flower } from '../src/types';
+import { LIMITS, TEXT_DEFAULTS, makeFlower, normalizeDoc } from '../src/lib/normalize';
+import { TEXT_PLACEMENTS, type Doc, type Flower } from '../src/types';
 
 /** Matches SAFE_URL_LENGTH in ui/Toolbar.tsx. */
 const SAFE_URL_LENGTH = 2000;
@@ -54,6 +55,7 @@ function docWith(count: number): Doc {
       width: 0.92,
     },
     flowers,
+    text: TEXT_DEFAULTS,
   };
 }
 
@@ -145,5 +147,90 @@ describe('resilience', () => {
     // Re-normalising a decoded document must be a no-op, otherwise the codec is
     // emitting values the rest of the app would silently repair.
     expect(normalizeDoc(decoded).doc).toEqual(decoded);
+  });
+});
+
+describe('note', () => {
+  const withNote = (over: Partial<Doc['text']> = {}): Doc => ({
+    ...docWith(3),
+    text: { ...TEXT_DEFAULTS, content: 'Happy birthday', ...over },
+  });
+
+  it('round-trips a note through a share link', () => {
+    const doc = withNote({ placement: 'tag', font: 'script', color: '#8d2050', size: 1.4 });
+    const decoded = decodeShare(encodeShare(doc))!.doc;
+    expect(decoded.text.content).toBe('Happy birthday');
+    expect(decoded.text.placement).toBe('tag');
+    expect(decoded.text.font).toBe('script');
+    expect(decoded.text.color).toBe('#8d2050');
+    withinStep(decoded.text.size, 1.4, 0.01);
+  });
+
+  it('round-trips every placement', () => {
+    for (const placement of TEXT_PLACEMENTS) {
+      const decoded = decodeShare(encodeShare(withNote({ placement })))!.doc;
+      expect(decoded.text.placement).toBe(placement);
+    }
+  });
+
+  it('preserves newlines in a multi-line note', () => {
+    const decoded = decodeShare(encodeShare(withNote({ content: 'With love,\nRamadas' })))!.doc;
+    expect(decoded.text.content).toBe('With love,\nRamadas');
+  });
+
+  it('omits the note from the payload when empty, keeping links short', () => {
+    const bare = docWith(3);
+    const withEmpty = { ...bare, text: { ...TEXT_DEFAULTS, content: '' } };
+    // An empty note must not cost link budget.
+    expect(encodeShare(withEmpty)).toBe(encodeShare(bare));
+  });
+
+  it('decodes a legacy 4-element payload written before notes existed', () => {
+    // Simulates a link shared by an older build: no 5th element at all.
+    const legacy = JSON.parse(
+      LZString.decompressFromEncodedURIComponent(encodeShare(docWith(2)))!,
+    );
+    expect(legacy).toHaveLength(4);
+    const decoded = decodeShare(
+      LZString.compressToEncodedURIComponent(JSON.stringify(legacy)),
+    );
+    expect(decoded).not.toBeNull();
+    expect(decoded!.doc.flowers).toHaveLength(2);
+    // Falls back to defaults rather than crashing or producing an invalid note.
+    expect(decoded!.doc.text).toEqual(TEXT_DEFAULTS);
+  });
+
+  it('still fits the URL budget with a full-length note', () => {
+    const doc: Doc = {
+      ...docWith(LIMITS.hardCap),
+      text: { ...TEXT_DEFAULTS, content: 'x'.repeat(LIMITS.textMaxLength) },
+    };
+    expect(buildShareUrl(doc, 'https://example.com/').length).toBeLessThanOrEqual(
+      SAFE_URL_LENGTH,
+    );
+  });
+});
+
+describe('note normalisation', () => {
+  it('caps length and line count', () => {
+    const { doc } = normalizeDoc({
+      text: { content: `${'a'.repeat(200)}\nb\nc\nd\ne\nf` },
+    });
+    expect(doc.text.content.length).toBeLessThanOrEqual(LIMITS.textMaxLength);
+    expect(doc.text.content.split('\n').length).toBeLessThanOrEqual(LIMITS.textMaxLines);
+  });
+
+  it('clamps size and repairs unknown placement, font and colour', () => {
+    const { doc } = normalizeDoc({
+      text: { content: 'hi', size: 99, placement: 'nowhere', font: 'comic', color: 'nope' },
+    });
+    expect(doc.text.size).toBe(LIMITS.textSize.max);
+    expect(doc.text.placement).toBe(TEXT_DEFAULTS.placement);
+    expect(doc.text.font).toBe(TEXT_DEFAULTS.font);
+    expect(doc.text.color).toBe(TEXT_DEFAULTS.color);
+  });
+
+  it('defaults a document that has no note at all', () => {
+    expect(normalizeDoc({}).doc.text).toEqual(TEXT_DEFAULTS);
   });
 });

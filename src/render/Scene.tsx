@@ -26,6 +26,7 @@ import type { Doc, Flower } from '../types';
 import { getFlowerType } from '../catalog/registry';
 import { SCENE, type VaseGeometry } from './vaseGeometry';
 import { Ground, VaseBodyLayer, VaseDefs, VaseInterior } from './VaseArt';
+import { VaseText } from './VaseText';
 import { Stem } from './Stem';
 import { PetalBurst, type Burst } from './Petals';
 import { useVase } from '../store/store';
@@ -204,7 +205,7 @@ export const Scene: FC<SceneProps> = ({
       viewBox={`0 0 ${SCENE.w} ${SCENE.h}`}
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label={`A ${doc.vase.material} ${geo.type.name.toLowerCase()} vase holding ${doc.flowers.length} ${doc.flowers.length === 1 ? 'flower' : 'flowers'}.`}
+      aria-label={`A ${doc.vase.material} ${geo.type.name.toLowerCase()} vase holding ${doc.flowers.length} ${doc.flowers.length === 1 ? 'flower' : 'flowers'}.${doc.text.content.trim() ? ` Note: ${doc.text.content.replace(/\s+/g, ' ').trim()}` : ''}`}
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
@@ -247,6 +248,8 @@ export const Scene: FC<SceneProps> = ({
       </g>
 
       <VaseBodyLayer geo={geo} vase={doc.vase} />
+
+      <VaseText text={doc.text} geo={geo} />
 
       {bursts.map((burst) => (
         <PetalBurst key={burst.id} burst={burst} />
