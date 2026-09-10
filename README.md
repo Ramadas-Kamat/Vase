@@ -188,12 +188,33 @@ covered. Vitest currently runs with `environment: 'node'` over
 `tests/**/*.test.ts`, so adding component tests means switching to jsdom and
 widening that glob to include `.tsx`.
 
+The suite runs in CI on every push to `main`, and a failure blocks deployment —
+see [Deployment](#deployment).
+
 ## Deployment
+
+The app is deployed to GitHub Pages at
+**<https://ramadas-kamat.github.io/Vase/>**.
+
+Deployment is automatic: pushing to `main` triggers
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which installs
+dependencies, typechecks, runs the tests, builds, and publishes `dist/`.
+
+The typecheck and test steps are gates — a commit that fails either one stops
+the workflow instead of being published, so the deploy doubles as CI. You can
+also trigger a deploy by hand from the Actions tab (`workflow_dispatch`).
+
+`dist/` is gitignored and never committed; the workflow builds it fresh each run.
+
+To build locally:
 
 ```bash
 npm run build
 ```
 
-The build is a static bundle in `dist/`. `vite.config.ts` sets `base: './'`, so
-it works from any sub-path — GitHub Pages project sites, Netlify, Cloudflare
-Pages, or a plain file server — with no further configuration.
+The result is a static bundle in `dist/` with no server-side requirements.
+Because there is no router — share links live in `location.hash`, which never
+reaches the server — no SPA rewrite rules are needed, and `vite.config.ts` sets
+`base: './'`, so the same bundle works from any sub-path. That covers GitHub
+Pages project sites, Netlify, Cloudflare Pages, or a plain file server, with no
+further configuration.
