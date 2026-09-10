@@ -204,6 +204,29 @@ widening that glob to include `.tsx`.
 The suite runs in CI on every push to `main`, and a failure blocks deployment —
 see [Deployment](#deployment).
 
+## Branches
+
+| Branch | Purpose |
+| --- | --- |
+| `main` | Production. Every push deploys. Treat it as "what is live". |
+| `dev` | Integration branch. Day-to-day work lands here first. |
+
+Work on `dev` (or a feature branch off it), then merge into `main` when you want
+to ship. [`.github/workflows/ci.yml`](.github/workflows/ci.yml) typechecks,
+tests and builds every branch except `main` and every pull request into `main`,
+so problems surface before they can reach production.
+
+```bash
+git switch dev
+# …work, commit…
+git push
+
+# ship it
+git switch main
+git merge dev
+git push          # triggers the deploy
+```
+
 ## Deployment
 
 The app is deployed to GitHub Pages at
@@ -231,3 +254,22 @@ reaches the server — no SPA rewrite rules are needed, and `vite.config.ts` set
 `base: './'`, so the same bundle works from any sub-path. That covers GitHub
 Pages project sites, Netlify, Cloudflare Pages, or a plain file server, with no
 further configuration.
+
+### Cloudflare Pages
+
+A second deployment runs on Cloudflare Pages, which is where access control
+lives. Build settings:
+
+| Setting | Value |
+| --- | --- |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Production branch | `main` |
+
+Cloudflare's `.node-version` and `.nvmrc` support is unreliable, so the Node
+version is pinned with a `NODE_VERSION` environment variable instead.
+
+**Set `NODE_VERSION` to `22` in both the Production *and* Preview
+environments.** They are configured separately, and a value set only on
+Production leaves preview builds — which is what `dev` and every pull request
+produce — running Cloudflare's default Node.
