@@ -12,6 +12,7 @@ import { pngBlob } from '../export/exportPng';
 import { svgBlob } from '../export/exportSvg';
 import { downloadJson, readJsonFile, triggerDownload } from '../persistence';
 import { buildShareUrl } from '../lib/share';
+import { APP_NAME, FILE_SLUG } from '../appConfig';
 
 /** Beyond this, some clients (and older Windows browsers) truncate URLs. */
 const SAFE_URL_LENGTH = 2000;
@@ -46,8 +47,8 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
     if (!svg) return;
     try {
       const blob = await pngBlob(svg);
-      triggerDownload(URL.createObjectURL(blob), 'flower-vase.png');
-      notify('Saved flower-vase.png');
+      triggerDownload(URL.createObjectURL(blob), `${FILE_SLUG}.png`);
+      notify(`Saved ${FILE_SLUG}.png`);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'PNG export failed.', 'warn');
     }
@@ -57,14 +58,14 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
     closeMenu();
     const svg = svgRef.current;
     if (!svg) return;
-    triggerDownload(URL.createObjectURL(svgBlob(svg)), 'flower-vase.svg');
-    notify('Saved flower-vase.svg');
+    triggerDownload(URL.createObjectURL(svgBlob(svg)), `${FILE_SLUG}.svg`);
+    notify(`Saved ${FILE_SLUG}.svg`);
   };
 
   const exportJson = () => {
     closeMenu();
     downloadJson(doc);
-    notify('Saved flower-vase.json');
+    notify(`Saved ${FILE_SLUG}.json`);
   };
 
   const copyShareLink = async () => {
@@ -105,7 +106,7 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
     <header className="toolbar">
       <div className="brand">
         <span className="brand-mark" aria-hidden="true" />
-        <h1 className="brand-name">Digital Flower Vase</h1>
+        <h1 className="brand-name">{APP_NAME}</h1>
       </div>
 
       <div className="toolbar-group">

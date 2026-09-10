@@ -9,6 +9,7 @@
  * failed autosave must never take the app down.
  */
 import type { Doc } from './types';
+import { FILE_SLUG } from './appConfig';
 import { normalizeDoc } from './lib/normalize';
 import { readShareFromHash } from './lib/share';
 import { defaultDoc } from './presets';
@@ -65,7 +66,7 @@ export function clearSavedDoc(): void {
 
 // --- JSON file import / export ---------------------------------------------
 
-export function downloadJson(doc: Doc, filename = 'flower-vase.json'): void {
+export function downloadJson(doc: Doc, filename = `${FILE_SLUG}.json`): void {
   const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' });
   triggerDownload(URL.createObjectURL(blob), filename);
 }

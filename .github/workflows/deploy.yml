@@ -40,6 +40,12 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # Optional repository variables (Settings → Secrets and variables →
+          # Actions → Variables) that rename the app for this deployment.
+          # When unset they arrive blank, and the build falls back to `.env`.
+          VITE_APP_NAME: ${{ vars.VITE_APP_NAME }}
+          VITE_APP_DESCRIPTION: ${{ vars.VITE_APP_DESCRIPTION }}
 
       - uses: actions/configure-pages@v6
 

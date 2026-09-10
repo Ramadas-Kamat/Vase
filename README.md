@@ -301,3 +301,49 @@ different place from the runtime Variables section.
 > Note: `.node-version` is honoured by **Workers** Builds. It is unreliable on
 > Cloudflare **Pages**, where a `NODE_VERSION` build variable is needed instead —
 > and there it must be set for the Preview environment as well as Production.
+
+## Renaming the app
+
+The name is not hardcoded. Two build-time variables control it:
+
+| Variable | Controls |
+| --- | --- |
+| `VITE_APP_NAME` | Browser tab title, the heading in the toolbar, and the download filenames |
+| `VITE_APP_DESCRIPTION` | The `<meta name="description">` tag |
+
+Defaults live in [`.env`](.env), which is committed because it holds no secrets.
+Vite inlines these at build time, so a rename needs a rebuild — there is no
+runtime lookup to configure.
+
+Try one locally:
+
+```bash
+VITE_APP_NAME="Roses for Anita" npm run build
+```
+
+Downloads follow the name automatically: `slugify()` in
+[`src/appConfig.ts`](src/appConfig.ts) turns it into a filename stem, so that
+build saves `roses-for-anita.png` rather than the stock `flower-vase.png`. Names
+that slug to nothing — pure punctuation, or a non-Latin script — fall back to
+`flower-vase` so the file never downloads as a dotfile.
+
+Per deployment:
+
+- **Cloudflare Workers** — add `VITE_APP_NAME` under
+  **Settings → Build → Build Variables and Secrets**, the same place as
+  `NODE_VERSION`. Redeploy to apply it.
+- **GitHub Pages** — add a repository variable under
+  **Settings → Secrets and variables → Actions → Variables**;
+  [`deploy.yml`](.github/workflows/deploy.yml) passes it through to the build.
+
+Each deployment can therefore carry its own name from the same `main` branch.
+
+Leaving a variable unset is safe. An unset GitHub Actions variable expands to an
+empty string rather than being absent, and Vite lets real environment variables
+outrank `.env` — so without a guard, an unset variable would blank the app name
+instead of falling back to it. `vite.config.ts` drops blank `VITE_*` variables
+before Vite reads them, which keeps the defaults intact.
+
+Avoid a literal `"` or `<` in the name: the values are substituted into
+`index.html` as raw text, so those characters would corrupt the markup.
+Ampersands, apostrophes, and accented letters are all fine.
