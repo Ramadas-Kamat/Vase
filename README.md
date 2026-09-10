@@ -261,16 +261,33 @@ reaches the server — no SPA rewrite rules are needed, and `vite.config.ts` set
 Pages project sites, Netlify, Cloudflare Pages, or a plain file server, with no
 further configuration.
 
-### Cloudflare Pages
+### Cloudflare Workers
 
-A second deployment runs on Cloudflare Pages, which is where access control
-lives. Build settings:
+A second deployment runs on Cloudflare Workers, which is where access control
+lives. Cloudflare now steers new projects to Workers rather than Pages, so the
+site is served through [Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/)
+using [`wrangler.jsonc`](wrangler.jsonc).
 
 | Setting | Value |
 | --- | --- |
 | Build command | `npm run build` |
-| Output directory | `dist` |
+| Deploy command | `npx wrangler deploy` |
 | Production branch | `main` |
+
+There is no Worker script — `wrangler.jsonc` only points at `dist/`, so requests
+are served straight from Cloudflare's edge. If the app ever needs a backend, a
+`main` entry point can be added without changing hosts.
+
+`not_found_handling` is deliberately left at its default. The usual choice for a
+React app is `single-page-application`, which serves `index.html` for every
+unmatched path — but this app has no router, so that would turn a mistyped URL
+into a silent, confusing copy of the app instead of an honest 404.
+
+Validate the config without deploying:
+
+```bash
+npm run build && npx wrangler deploy --dry-run
+```
 
 Cloudflare's `.node-version` and `.nvmrc` support is unreliable, so the Node
 version is pinned with a `NODE_VERSION` environment variable instead.
