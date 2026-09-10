@@ -289,10 +289,15 @@ Validate the config without deploying:
 npm run build && npx wrangler deploy --dry-run
 ```
 
-Cloudflare's `.node-version` and `.nvmrc` support is unreliable, so the Node
-version is pinned with a `NODE_VERSION` environment variable instead.
+The Node version is pinned by [`.node-version`](.node-version), which Workers
+Builds reads. It is set to `22` to match the GitHub Actions workflows, so the
+same Node builds the app everywhere. Cloudflare's own default is newer, and
+while the app builds fine on it, matching CI keeps one less variable in play.
 
-**Set `NODE_VERSION` to `22` in both the Production *and* Preview
-environments.** They are configured separately, and a value set only on
-Production leaves preview builds — which is what `dev` and every pull request
-produce — running Cloudflare's default Node.
+If you would rather set it in the dashboard, the field is under
+**Settings → Build → Build Variables and Secrets** (`NODE_VERSION`), which is a
+different place from the runtime Variables section.
+
+> Note: `.node-version` is honoured by **Workers** Builds. It is unreliable on
+> Cloudflare **Pages**, where a `NODE_VERSION` build variable is needed instead —
+> and there it must be set for the Preview environment as well as Production.
