@@ -179,6 +179,12 @@ material and pattern without another line of code.
   instead. A note is appended to the payload and omitted entirely when empty, so
   links written before notes existed still open, and adding a note costs nothing
   unless you use one.
+
+  A full 40-stem arrangement already sits within about 20 characters of that
+  ceiling, so at the hard cap a note can tip a link over it. That is handled,
+  not fatal: the app declines to copy and points you at Save JSON. At the soft
+  cap of 24 stems, the longest permitted note still leaves several hundred
+  characters spare.
 - **JSON** — *Download JSON file* and *Open JSON…* round-trip the document.
   Imports are normalised, so a file referring to a flower type that no longer
   exists loads what it can and reports what it dropped.

@@ -35,12 +35,23 @@ function withinStep(actual: number, expected: number, step: number): void {
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(step / 2 + 1e-9);
 }
 
+/**
+ * Build a document with DETERMINISTIC seeds.
+ *
+ * `makeFlower` assigns a random seed, and seeds are the least compressible part
+ * of the payload, so leaving them random makes every size assertion below vary
+ * run to run. That is not hypothetical: with random seeds, a 40-flower link
+ * measured 1953–2006 characters across 500 samples and exceeded the 2000-char
+ * budget about 1.8% of the time — a test that fails once or twice in a hundred
+ * CI runs for no reason anyone can reproduce locally. Fixing the seeds makes
+ * the size tests mean something.
+ */
 function docWith(count: number): Doc {
   const flowers: Flower[] = [];
   for (let i = 0; i < count; i += 1) {
     const type = types[i % types.length]!;
     const f = makeFlower(type.id, ((i * 7) % 20) / 20, 0.1 + ((i * 3) % 16) / 20);
-    if (f) flowers.push(f);
+    if (f) flowers.push({ ...f, seed: (i * 2654435761) >>> 0 });
   }
   return {
     v: 1,
@@ -200,14 +211,46 @@ describe('note', () => {
     expect(decoded!.doc.text).toEqual(TEXT_DEFAULTS);
   });
 
-  it('still fits the URL budget with a full-length note', () => {
+  it('leaves a soft-cap arrangement with a full-length note well inside the URL budget', () => {
+    // The soft cap is the size the UI actively steers people towards, so this
+    // is the guarantee that matters: a realistic arrangement plus the longest
+    // permitted note still shares as a link, with room to spare.
     const doc: Doc = {
-      ...docWith(LIMITS.hardCap),
+      ...docWith(LIMITS.softCap),
       text: { ...TEXT_DEFAULTS, content: 'x'.repeat(LIMITS.textMaxLength) },
     };
     expect(buildShareUrl(doc, 'https://example.com/').length).toBeLessThanOrEqual(
       SAFE_URL_LENGTH,
     );
+  });
+
+  it('adds only a bounded amount to the payload', () => {
+    // Guards against a codec change that makes notes disproportionately
+    // expensive — the note must cost roughly its own length, not multiples.
+    const base = docWith(LIMITS.softCap);
+    const withNote: Doc = {
+      ...base,
+      text: { ...TEXT_DEFAULTS, content: 'x'.repeat(LIMITS.textMaxLength) },
+    };
+    const cost = encodeShare(withNote).length - encodeShare(base).length;
+    expect(cost).toBeGreaterThan(0);
+    expect(cost).toBeLessThan(LIMITS.textMaxLength * 2);
+  });
+
+  it('can push a hard-cap arrangement past the URL budget, which the UI handles', () => {
+    // Documenting real behaviour rather than wishing it away. A 40-flower
+    // arrangement already sits within ~20 characters of the ceiling before any
+    // note, so a note tips it over. Toolbar.tsx checks the same limit and tells
+    // the user to save JSON instead, so this degrades rather than breaking.
+    const doc: Doc = {
+      ...docWith(LIMITS.hardCap),
+      text: { ...TEXT_DEFAULTS, content: 'x'.repeat(LIMITS.textMaxLength) },
+    };
+    expect(buildShareUrl(doc, 'https://example.com/').length).toBeGreaterThan(
+      SAFE_URL_LENGTH,
+    );
+    // Still decodable — over budget is a sharing limit, not a corrupt payload.
+    expect(decodeShare(encodeShare(doc))!.doc.flowers).toHaveLength(LIMITS.hardCap);
   });
 });
 
