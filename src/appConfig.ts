@@ -26,6 +26,9 @@ export function slugify(name: string): string {
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+    // Drop apostrophes rather than letting them become separators, so
+    // "Kswari's Vase" slugs to "kswaris-vase" instead of "kswari-s-vase".
+    .replace(/['\u2018\u2019]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 

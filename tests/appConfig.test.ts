@@ -7,7 +7,12 @@ describe('slugify', () => {
   });
 
   it('collapses runs of punctuation and whitespace into one hyphen', () => {
-    expect(slugify("Rama's  Vase — 2026!")).toBe('rama-s-vase-2026');
+    expect(slugify('Bouquet —  2026!')).toBe('bouquet-2026');
+  });
+
+  it('drops apostrophes instead of turning them into separators', () => {
+    expect(slugify("Kswari's Vase")).toBe('kswaris-vase');
+    expect(slugify('Kswari\u2019s Vase')).toBe('kswaris-vase');
   });
 
   it('trims leading and trailing separators', () => {

@@ -323,9 +323,11 @@ VITE_APP_NAME="Roses for Anita" npm run build
 
 Downloads follow the name automatically: `slugify()` in
 [`src/appConfig.ts`](src/appConfig.ts) turns it into a filename stem, so that
-build saves `roses-for-anita.png` rather than the stock `flower-vase.png`. Names
-that slug to nothing — pure punctuation, or a non-Latin script — fall back to
-`flower-vase` so the file never downloads as a dotfile.
+build saves `roses-for-anita.png` rather than the stock `flower-vase.png`.
+Apostrophes are dropped rather than becoming separators, so `Kswari's Vase`
+gives `kswaris-vase.png`, not `kswari-s-vase.png`. Names that slug to nothing —
+pure punctuation, or a non-Latin script — fall back to `flower-vase` so the file
+never downloads as a dotfile.
 
 Per deployment:
 
