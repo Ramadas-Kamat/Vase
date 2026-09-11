@@ -113,6 +113,14 @@ class-based styling silently disappears from exported PNG and SVG files. For the
 same reason, only system font stacks are used — a webfont would not be embedded
 in the SVG, and would taint the PNG export canvas. See `render/VaseText.tsx`.
 
+That is the summary. Two longer documents go deeper:
+
+- [`docs/architecture.md`](docs/architecture.md) — the document model, layering
+  and boot order, the registry, the render and export pipelines, the share
+  codec, and where the limits come from.
+- [`docs/decisions.md`](docs/decisions.md) — why each of those was chosen, what
+  was rejected, and what it costs.
+
 ## Adding a flower
 
 Copy [`src/catalog/flowers/_template.tsx`](src/catalog/flowers/_template.tsx) to

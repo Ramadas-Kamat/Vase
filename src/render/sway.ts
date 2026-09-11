@@ -9,7 +9,7 @@
  *
  * Two summed sine waves at incommensurate frequencies, offset per stem by a
  * seed-derived phase, read as a breeze rather than a metronome. This is faked
- * motion, not a physical simulation — see DECISIONS.md for why.
+ * motion, not a physical simulation — see `docs/decisions.md` for why.
  */
 
 interface Entry {
