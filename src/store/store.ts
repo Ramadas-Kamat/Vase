@@ -30,12 +30,18 @@ export interface Notice {
   tone: 'info' | 'warn';
 }
 
+export type SyncStatus = 'local' | 'connecting' | 'live' | 'saving' | 'offline' | 'error';
+
 interface VaseSlice {
   doc: Doc;
   selectedId: string | null;
   past: Doc[];
   future: Doc[];
   notice: Notice | null;
+  syncEnabled: boolean;
+  syncStatus: SyncStatus;
+  syncMessage: string | null;
+  editingEnabled: boolean;
 
   // --- selection -----------------------------------------------------------
   select: (id: string | null) => void;
@@ -61,10 +67,14 @@ interface VaseSlice {
 
   // --- document ------------------------------------------------------------
   setTheme: (theme: Theme) => void;
-  loadDoc: (doc: Doc, options?: { resetHistory?: boolean }) => void;
+  loadDoc: (doc: Doc, options?: { resetHistory?: boolean; source?: 'user' | 'boot' }) => void;
+  applyRemoteDoc: (doc: Doc) => void;
   applyPreset: (presetId: string) => void;
   randomize: () => void;
   clearFlowers: () => void;
+
+  // --- sync -----------------------------------------------------------------
+  setSyncState: (status: SyncStatus, message?: string) => void;
 
   // --- history -------------------------------------------------------------
   undo: () => void;
@@ -84,8 +94,16 @@ let lastAt = 0;
 let noticeSeq = 0;
 
 export const useVase = create<VaseSlice>((set, get) => {
+  const canEdit = (): boolean => {
+    const { syncEnabled, editingEnabled } = get();
+    if (!syncEnabled || editingEnabled) return true;
+    get().notify('The shared vase is reconnecting. Wait until it is live before editing.', 'warn');
+    return false;
+  };
+
   /** Push a new document, respecting coalescing. */
-  const commit = (next: Doc, coalesceKey?: string): void => {
+  const commit = (next: Doc, coalesceKey?: string): boolean => {
+    if (!canEdit()) return false;
     const s = get();
     const now = Date.now();
     const coalesce = coalesceKey != null && coalesceKey === lastKey && now - lastAt < COALESCE_MS;
@@ -96,12 +114,15 @@ export const useVase = create<VaseSlice>((set, get) => {
       past: coalesce ? s.past : [...s.past, s.doc].slice(-LIMITS.historyDepth),
       future: [],
     });
+    return true;
   };
 
   /** Mutate the document without creating a history entry. */
-  const silent = (next: Doc): void => {
+  const silent = (next: Doc): boolean => {
+    if (!canEdit()) return false;
     lastKey = null;
     set({ doc: next });
+    return true;
   };
 
   const patchFlowers = (
@@ -120,6 +141,10 @@ export const useVase = create<VaseSlice>((set, get) => {
     past: [],
     future: [],
     notice: null,
+    syncEnabled: false,
+    syncStatus: 'local',
+    syncMessage: null,
+    editingEnabled: true,
 
     select: (id) => set({ selectedId: id }),
 
@@ -173,7 +198,7 @@ export const useVase = create<VaseSlice>((set, get) => {
         notify(`Unknown flower type "${typeId}".`, 'warn');
         return null;
       }
-      commit({ ...doc, flowers: [...doc.flowers, flower] });
+      if (!commit({ ...doc, flowers: [...doc.flowers, flower] })) return null;
       set({ selectedId: flower.id });
       if (doc.flowers.length + 1 === LIMITS.softCap + 1) {
         notify('Getting full — past 24 stems it starts to read as a hedge.', 'info');
@@ -184,7 +209,7 @@ export const useVase = create<VaseSlice>((set, get) => {
     removeFlower: (id) => {
       const { doc, selectedId } = get();
       if (!doc.flowers.some((f) => f.id === id)) return;
-      commit({ ...doc, flowers: doc.flowers.filter((f) => f.id !== id) });
+      if (!commit({ ...doc, flowers: doc.flowers.filter((f) => f.id !== id) })) return;
       if (selectedId === id) set({ selectedId: null });
     },
 
@@ -205,7 +230,7 @@ export const useVase = create<VaseSlice>((set, get) => {
         stemLength: src.stemLength,
         colors: { ...src.colors },
       };
-      commit({ ...doc, flowers: [...doc.flowers, clone] });
+      if (!commit({ ...doc, flowers: [...doc.flowers, clone] })) return;
       set({ selectedId: clone.id });
     },
 
@@ -251,6 +276,7 @@ export const useVase = create<VaseSlice>((set, get) => {
     setTheme: (theme) => silent({ ...get().doc, theme }),
 
     loadDoc: (doc, options) => {
+      if (options?.source !== 'boot' && !canEdit()) return;
       const { doc: current } = get();
       if (options?.resetHistory) {
         lastKey = null;
@@ -266,16 +292,23 @@ export const useVase = create<VaseSlice>((set, get) => {
       });
     },
 
+    applyRemoteDoc: (doc) => {
+      lastKey = null;
+      set({ doc, past: [], future: [], selectedId: null });
+    },
+
     applyPreset: (presetId) => {
+      if (!canEdit()) return;
       const preset = PRESETS.find((p) => p.id === presetId);
       if (!preset) return;
       const { doc } = get();
       // Keep the user's theme; only the arrangement is being replaced.
-      get().loadDoc({ ...preset.build(), theme: doc.theme });
+      get().loadDoc({ ...preset.build(), theme: doc.theme }, { source: 'user' });
       get().notify(`Loaded “${preset.name}”.`);
     },
 
     randomize: () => {
+      if (!canEdit()) return;
       const rng = makeRng(newSeed());
       const vaseType = pick(rng, allVaseTypes());
       const types = allFlowerTypes();
@@ -318,17 +351,18 @@ export const useVase = create<VaseSlice>((set, get) => {
         flowers: specs,
         // Randomising the arrangement should not silently discard a note.
         text: get().doc.text,
-      });
+      }, { source: 'user' });
     },
 
     clearFlowers: () => {
       const { doc } = get();
       if (doc.flowers.length === 0) return;
-      commit({ ...doc, flowers: [] });
+      if (!commit({ ...doc, flowers: [] })) return;
       set({ selectedId: null });
     },
 
     undo: () => {
+      if (!canEdit()) return;
       const { past, future, doc } = get();
       const previous = past[past.length - 1];
       if (!previous) return;
@@ -342,6 +376,7 @@ export const useVase = create<VaseSlice>((set, get) => {
     },
 
     redo: () => {
+      if (!canEdit()) return;
       const { past, future, doc } = get();
       const next = future[0];
       if (!next) return;
@@ -357,6 +392,16 @@ export const useVase = create<VaseSlice>((set, get) => {
     canUndo: () => get().past.length > 0,
     canRedo: () => get().future.length > 0,
 
+    setSyncState: (status, message) => {
+      const shared = status !== 'local';
+      set({
+        syncEnabled: shared,
+        syncStatus: status,
+        syncMessage: message ?? null,
+        editingEnabled: !shared || status === 'live' || status === 'saving',
+      });
+    },
+
     notify: (text, tone = 'info') => {
       noticeSeq += 1;
       set({ notice: { id: noticeSeq, text, tone } });
@@ -369,7 +414,7 @@ export const useVase = create<VaseSlice>((set, get) => {
 /** Replace the whole document from outside React (boot, import, share link). */
 export function hydrate(raw: unknown): { dropped: number } {
   const { doc, dropped } = normalizeDoc(raw);
-  useVase.getState().loadDoc(doc, { resetHistory: true });
+  useVase.getState().loadDoc(doc, { resetHistory: true, source: 'boot' });
   return { dropped };
 }
 

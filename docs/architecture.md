@@ -7,7 +7,9 @@ deployment instructions, see the [README](../README.md).
 ## The one-sentence version
 
 `Doc` is the entire application state; everything visible is a pure function of
-it, and everything durable is a copy of it.
+it, and everything durable is a copy of it. In the shared deployment, the
+Durable Object is the authoritative copy and browser `localStorage` is only the
+last-known cache.
 
 ## The document model
 
@@ -61,11 +63,13 @@ main.tsx            boot: populate registry → resolve doc → mount
   └ App.tsx         layout, keyboard shortcuts, tray→scene placement
       ├ ui/         toolbar, tray, properties panel, context menu, toasts
       ├ render/     the SVG scene
-      └ store/      zustand store: doc + history + selection
+     ├ sync/       room protocol and browser WebSocket client
+     └ store/      zustand store: doc + history + selection
 
   catalog/          self-registering flower and vase types
   lib/              rng, colour, geometry, share codec, normalisation
   export/           PNG and SVG serialisers
+  worker/           Cloudflare Worker route and Durable Object room
 ```
 
 Dependencies mostly point inward: `ui/` and `render/` read from `store/` and
@@ -239,6 +243,35 @@ complexity of a diff/patch system.
 `coalesceKey`. Repeats of the same key within 650 ms mutate the present instead
 of pushing a new entry, so one drag is one undo step rather than two hundred.
 
+## Shared room synchronization
+
+The Cloudflare deployment exposes one `default` room at `/api/room`. A
+`VaseRoom` Durable Object stores `{ revision, doc }` in durable storage and
+accepts complete documents over HTTP `PUT` or a WebSocket write message. Every
+accepted write normalises the document, increments the revision, persists it,
+and broadcasts the snapshot to all connected clients.
+
+The browser performs an initial `GET`, then opens a WebSocket. User changes are
+debounced briefly so a slider sweep becomes one network write, while the
+store's existing coalescing still controls undo granularity. A server snapshot
+carries the revision and the originating client id:
+
+- A snapshot from the same client acknowledges its pending write.
+- A snapshot from another client replaces the local document only when there
+  are no pending local writes, and starts a fresh local undo boundary.
+- The server processes writes in arrival order, so simultaneous edits are
+  deliberately last-write-wins rather than merged.
+
+While the room is connecting, offline, or unavailable, shared editing is
+disabled. The last document remains visible from `localStorage`, and the client
+retries on a timer and on the browser's `online` event. A deployment that
+returns no JSON room endpoint (for example GitHub Pages or Vite development)
+falls back to the existing local-only behavior.
+
+The service worker caches only same-origin app-shell requests. `/api/room` is
+explicitly excluded, so an offline cache can never masquerade as authoritative
+collaborative state.
+
 ## Limits
 
 From `lib/normalize.ts`:
@@ -266,7 +299,10 @@ dev ──CI──▶ main ──┬──▶ GitHub Actions ──▶ GitHub Pa
 
 The bundle is host-agnostic: `base: './'` gives relative asset paths, and there
 is no router — share state lives in `location.hash`, which never reaches the
-server — so no SPA rewrite rules are needed anywhere.
+server — so no SPA rewrite rules are needed anywhere. On Cloudflare, a Worker
+route handles `/api/room` before falling back to the static asset binding. On
+GitHub Pages the endpoint is absent, so the browser deliberately stays local
+only.
 
 Branding is injected at build time from `VITE_APP_NAME` /
 `VITE_APP_DESCRIPTION` (see `src/appConfig.ts`), which is why the same commit
@@ -275,10 +311,11 @@ can serve under different names on the two hosts.
 ## Testing
 
 Tests cover the logic layer — share codec round trips, normalisation and repair,
-store actions and history, vase geometry, registry invariants, and the branding
-slug. Rendering is verified by hand and in the browser rather than by snapshot,
-since SVG snapshots are noisy and tend to assert on coordinates that are
-*supposed* to be free to change.
+store actions and history, vase geometry, registry invariants, the room protocol,
+and the branding slug. The browser sync client is exercised through the
+protocol's pure parsing and URL helpers; rendering is verified by hand and in
+the browser rather than by snapshot, since SVG snapshots are noisy and tend to
+assert on coordinates that are *supposed* to be free to change.
 
 One trap worth knowing: tests that assert on **share-link length** must pin
 flower seeds. Seeds are the least-compressible part of the payload, so random

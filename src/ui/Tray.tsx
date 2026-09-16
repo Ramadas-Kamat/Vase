@@ -13,6 +13,7 @@
 import type { FC, PointerEvent as ReactPointerEvent } from 'react';
 import { flowerTypesByCategory } from '../catalog/registry';
 import { FlowerThumb } from './FlowerThumb';
+import { useVase } from '../store/store';
 
 interface TrayProps {
   onStartPlacing: (typeId: string, event: ReactPointerEvent) => void;
@@ -22,6 +23,7 @@ interface TrayProps {
 
 export const Tray: FC<TrayProps> = ({ onStartPlacing, onQuickAdd, activeTypeId }) => {
   const { bloom, filler } = flowerTypesByCategory();
+  const editingEnabled = useVase((s) => s.editingEnabled);
 
   const renderGroup = (title: string, types: typeof bloom) => (
     <section className="tray-group">
@@ -34,6 +36,7 @@ export const Tray: FC<TrayProps> = ({ onStartPlacing, onQuickAdd, activeTypeId }
             className={`tray-item${activeTypeId === type.id ? ' is-dragging' : ''}`}
             title={`${type.name} — drag into the vase, or press Enter to add`}
             onPointerDown={(event) => onStartPlacing(type.id, event)}
+            disabled={!editingEnabled}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();

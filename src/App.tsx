@@ -29,6 +29,7 @@ import { FlowerThumb } from './ui/FlowerThumb';
 import { useRemoveFlourish } from './ui/useRemoveFlourish';
 import { saveDocDebounced } from './persistence';
 import { clamp } from './lib/geom';
+import { startRoomSync } from './sync/client';
 
 /** Pointer travel that separates a click from a drag, in CSS pixels. */
 const DRAG_SLOP = 5;
@@ -46,6 +47,7 @@ interface Ghost {
 export default function App() {
   const doc = useVase((s) => s.doc);
   const selectedId = useVase((s) => s.selectedId);
+  const editingEnabled = useVase((s) => s.editingEnabled);
   const addFlower = useVase((s) => s.addFlower);
   const select = useVase((s) => s.select);
   const undo = useVase((s) => s.undo);
@@ -78,6 +80,11 @@ export default function App() {
     setSwayEnabled(motion);
     document.documentElement.dataset.motion = motion ? 'on' : 'off';
   }, [motion]);
+
+  useEffect(() => {
+    const sync = startRoomSync();
+    return () => sync.stop();
+  }, []);
 
   useEffect(() => {
     saveDocDebounced(doc);
@@ -200,7 +207,7 @@ export default function App() {
   const ghostType = ghost ? getFlowerType(ghost.typeId) : null;
 
   return (
-    <div className="app">
+    <div className="app" data-editable={editingEnabled ? 'true' : 'false'}>
       <Toolbar svgRef={svgRef} motion={motion} onToggleMotion={() => setMotion((m) => !m)} />
 
       <main className="workspace">

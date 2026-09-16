@@ -28,6 +28,11 @@ arrangement looks right. Then export it as a PNG, an SVG, a JSON file, or a link
   when the system asks for reduced motion.
 - **Export and share** — PNG, SVG, JSON, or a compressed share link.
 - **Autosave** to `localStorage`, so a reload picks up where you left off.
+- **Live shared vase** when served from the Cloudflare Workers deployment —
+  invited people see vase and note changes as they are saved.
+- **Installable PWA** — add the app to a phone or laptop home screen; the last
+  known vase remains viewable while offline, but shared edits wait for a live
+  connection.
 
 ## Quick start
 
@@ -47,7 +52,8 @@ Then open the URL Vite prints (by default <http://localhost:5173>).
 | `npm run dev` | Start the Vite dev server with hot reload. |
 | `npm run build` | Typecheck, then build to `dist/`. |
 | `npm run preview` | Serve the built `dist/` locally. |
-| `npm run typecheck` | `tsc --noEmit`, no build output. |
+| `npm run typecheck` | Typecheck the browser app, no build output. |
+| `npm run typecheck:worker` | Typecheck the Cloudflare Worker and Durable Object. |
 | `npm test` | Run the test suite once. |
 | `npm run test:watch` | Run the tests in watch mode. |
 
@@ -70,9 +76,15 @@ src/
     Stem.tsx        Stems and leaves, drawn from each type's stem spec
     sway.ts         The shared breeze animation clock
   ui/               Toolbar, tray, properties panel, context menu, toasts
+  sync/             Shared-room protocol and browser WebSocket client
   lib/              Seeded RNG, colour, geometry, share codec, normalisation
   export/           PNG and SVG exporters
   styles/           Theme tokens, base layout, panel styling
+worker/
+  index.ts          Cloudflare Worker route and static asset fallback
+  room.ts           Durable Object persistence and WebSocket fan-out
+public/
+  manifest.webmanifest, sw.js, icons/
 tests/              Vitest suites for the logic layer
 ```
 
@@ -181,6 +193,14 @@ material and pattern without another line of code.
   after you stop editing.
 - **Boot order** — a share link in the URL hash wins, then `localStorage`, then
   the first starter arrangement.
+- **Shared room** — the Cloudflare deployment opens one private `default` room.
+  The room stores the latest normalised `Doc`, assigns a monotonic revision, and
+  broadcasts complete snapshots over a WebSocket. Writes are last-write-wins.
+  Cloudflare Access supplies the email allowlist; the app does not count
+  devices.
+- **Offline behavior** — the last document remains in `localStorage` for display,
+  but the shared editor becomes read-only until the room reconnects. Edits are
+  not queued offline.
 - **Share link** — *Share & download → Copy link* compresses the document into
   the URL hash with `lz-string`. Links over 2000 characters are refused, since
   some clients truncate them; save a JSON file for very large arrangements
@@ -200,6 +220,14 @@ material and pattern without another line of code.
 
 Limits: 24 stems is a soft cap the UI warns about, 40 is a hard cap, both defined
 in `lib/normalize.ts` to protect the 60fps target.
+
+## Installable app
+
+When served over HTTPS from the Cloudflare deployment (or a local production
+preview), a supported browser can install the vase from its address-bar install
+control or browser menu. The manifest opens it in a standalone window and the
+service worker caches the app shell. Room API responses are never cached, so an
+offline launch can show the last known vase but cannot pretend that it is live.
 
 ## Testing
 
@@ -271,20 +299,28 @@ further configuration.
 
 ### Cloudflare Workers
 
-A second deployment runs on Cloudflare Workers, which is where access control
-lives. Cloudflare now steers new projects to Workers rather than Pages, so the
-site is served through [Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/)
-using [`wrangler.jsonc`](wrangler.jsonc).
+A second deployment runs on Cloudflare Workers, which is the canonical shared
+deployment and where access control lives. Cloudflare now steers new projects to
+Workers rather than Pages, so the site is served through
+[Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/)
+and a small Worker API using [`wrangler.jsonc`](wrangler.jsonc).
 
 | Setting | Value |
 | --- | --- |
 | Build command | `npm run build` |
 | Deploy command | `npx wrangler deploy` |
 | Production branch | `main` |
+| Shared endpoint | `GET /api/room` and WebSocket `/api/room` |
 
-There is no Worker script — `wrangler.jsonc` only points at `dist/`, so requests
-are served straight from Cloudflare's edge. If the app ever needs a backend, a
-`main` entry point can be added without changing hosts.
+`worker/index.ts` sends `/api/room` to the `VaseRoom` Durable Object and serves
+the built bundle through the `ASSETS` binding. The first deployment creates the
+SQLite-backed Durable Object class through the `v1` migration in
+`wrangler.jsonc`. Configure a Cloudflare Access application for the Worker and
+allow only the four intended email addresses.
+
+The GitHub Pages deployment remains useful as a static fallback and continues
+to support local autosave, exports, and share links. It detects the missing room
+endpoint and stays in local-only mode; it cannot provide cross-device sync.
 
 `not_found_handling` is deliberately left at its default. The usual choice for a
 React app is `single-page-application`, which serves `index.html` for every

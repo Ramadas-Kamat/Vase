@@ -362,3 +362,86 @@ commit is a deploy, and a failing typecheck is discovered in production.
 
 **Cost.** Two steps to ship. Cheap, and it gives Cloudflare's preview builds
 something to build.
+
+---
+
+## 21. One shared room comes before a workspace
+
+**Decision.** The first collaborative release has one private `default` room
+containing one shared vase.
+
+**Rejected.** Adding room creation, room lists, and multiple arrangements now.
+
+**Why.** The stated audience is at most four people and the desired behavior is
+one vase that everyone can update. A single room keeps the URL, access model,
+and data lifecycle understandable while leaving the API shape extensible.
+
+**Cost.** A second independent vase needs a future room identity and navigation
+surface rather than being available immediately.
+
+---
+
+## 22. Durable Objects provide room ordering and fan-out
+
+**Decision.** Store the latest `Doc` in a Cloudflare Durable Object and broadcast
+complete snapshots over WebSockets.
+
+**Rejected.** Adding a separate hosted database/realtime vendor, or trying to
+make `localStorage` coordinate browsers.
+
+**Why.** The existing production topology already runs on Cloudflare Workers.
+One Durable Object gives this four-person room durable storage, a single write
+order, and a natural place to fan out updates without introducing another
+service or credential.
+
+**Cost.** The shared deployment must be the Cloudflare Worker; GitHub Pages
+remains a static/local fallback rather than a synced host.
+
+---
+
+## 23. Last-write-wins is explicit
+
+**Decision.** Every accepted complete-document write increments a monotonic
+revision and replaces the previous snapshot. Concurrent writes are resolved in
+arrival order.
+
+**Rejected.** CRDTs, operational transforms, or field-level merge rules.
+
+**Why.** Four people editing a decorative vase do not justify the complexity of
+conflict-free data structures. Revisions make the outcome observable, and the
+client can show when a remote snapshot replaces its local view.
+
+**Cost.** Two simultaneous edits are not merged. Presence, attribution, and
+fine-grained conflict recovery are future features.
+
+---
+
+## 24. Offline shared sessions are read-only
+
+**Decision.** Cache the last known document for viewing, but require a live room
+connection before committing edits. Do not queue offline writes.
+
+**Rejected.** A reconnect queue that replays local edits.
+
+**Why.** A queue would turn a simple last-write-wins room into a second conflict
+system and could overwrite a vase changed by somebody else while the device was
+offline.
+
+**Cost.** A person cannot keep arranging the shared vase on a plane or in a
+dead zone. The PWA shell can still open and show the cached arrangement.
+
+---
+
+## 25. PWA shell first, native widgets later
+
+**Decision.** Ship a manifest, install metadata, and app-shell service worker so
+the responsive web app can be installed as a standalone app.
+
+**Rejected.** Building separate phone and desktop OS widgets in the first release.
+
+**Why.** PWA installation covers phone and laptop launch behavior with the
+existing React client and keeps the live room protocol shared. Native widgets
+need platform-specific code, lifecycle rules, and usually a separate wrapper.
+
+**Cost.** The first release does not place a live vase directly on an operating
+system home screen. That can be added later without changing the room model.

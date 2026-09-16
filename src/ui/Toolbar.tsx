@@ -13,6 +13,7 @@ import { svgBlob } from '../export/exportSvg';
 import { downloadJson, readJsonFile, triggerDownload } from '../persistence';
 import { buildShareUrl } from '../lib/share';
 import { APP_NAME, FILE_SLUG } from '../appConfig';
+import { SyncStatus } from './SyncStatus';
 
 /** Beyond this, some clients (and older Windows browsers) truncate URLs. */
 const SAFE_URL_LENGTH = 2000;
@@ -35,6 +36,7 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
   const setTheme = useVase((s) => s.setTheme);
   const loadDoc = useVase((s) => s.loadDoc);
   const notify = useVase((s) => s.notify);
+  const editingEnabled = useVase((s) => s.editingEnabled);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const menu = useRef<HTMLDetailsElement>(null);
@@ -109,12 +111,14 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
         <h1 className="brand-name">{APP_NAME}</h1>
       </div>
 
+      <SyncStatus />
+
       <div className="toolbar-group">
         <button
           type="button"
           className="btn"
           onClick={undo}
-          disabled={past.length === 0}
+          disabled={!editingEnabled || past.length === 0}
           title="Undo (⌘Z / Ctrl+Z)"
         >
           Undo
@@ -123,7 +127,7 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
           type="button"
           className="btn"
           onClick={redo}
-          disabled={future.length === 0}
+          disabled={!editingEnabled || future.length === 0}
           title="Redo (⇧⌘Z / Ctrl+Shift+Z)"
         >
           Redo
@@ -135,6 +139,7 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
           className="select"
           aria-label="Load a starter arrangement"
           value=""
+          disabled={!editingEnabled}
           onChange={(e) => {
             if (e.target.value) applyPreset(e.target.value);
           }}
@@ -146,14 +151,20 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
             </option>
           ))}
         </select>
-        <button type="button" className="btn" onClick={randomize} title="Generate a random arrangement">
+        <button
+          type="button"
+          className="btn"
+          onClick={randomize}
+          disabled={!editingEnabled}
+          title="Generate a random arrangement"
+        >
           Surprise me
         </button>
         <button
           type="button"
           className="btn"
           onClick={clearFlowers}
-          disabled={doc.flowers.length === 0}
+          disabled={!editingEnabled || doc.flowers.length === 0}
           title="Remove every stem (undoable)"
         >
           Empty vase
@@ -181,6 +192,7 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
           type="button"
           className="btn btn-icon"
           onClick={() => setTheme(doc.theme === 'light' ? 'dark' : 'light')}
+          disabled={!editingEnabled}
           title="Switch theme"
         >
           {doc.theme === 'light' ? 'Dark' : 'Light'}
@@ -210,6 +222,7 @@ export const Toolbar: FC<ToolbarProps> = ({ svgRef, motion, onToggleMotion }) =>
                 closeMenu();
                 fileInput.current?.click();
               }}
+              disabled={!editingEnabled}
             >
               Open JSON…
             </button>

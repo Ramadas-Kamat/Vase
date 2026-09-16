@@ -103,6 +103,7 @@ interface PropertiesProps {
 export const Properties: FC<PropertiesProps> = ({ onRequestRemove }) => {
   const doc = useVase((s) => s.doc);
   const selectedId = useVase((s) => s.selectedId);
+  const editingEnabled = useVase((s) => s.editingEnabled);
   const setVase = useVase((s) => s.setVase);
   const setVaseShape = useVase((s) => s.setVaseShape);
   const setText = useVase((s) => s.setText);
@@ -138,6 +139,7 @@ export const Properties: FC<PropertiesProps> = ({ onRequestRemove }) => {
           </button>
         </header>
 
+        <fieldset disabled={!editingEnabled} className="panel-fieldset">
         <PanelSection title="Colour">
           {has('petalColor') && (
             <ColorField
@@ -256,6 +258,7 @@ export const Properties: FC<PropertiesProps> = ({ onRequestRemove }) => {
             Remove stem
           </button>
         </PanelSection>
+        </fieldset>
       </aside>
     );
   }
@@ -276,6 +279,7 @@ export const Properties: FC<PropertiesProps> = ({ onRequestRemove }) => {
         </div>
       </header>
 
+      <fieldset disabled={!editingEnabled} className="panel-fieldset">
       <PanelSection title="Shape">
         <div className="shape-grid">
           {allVaseTypes().map((type) => (
@@ -406,6 +410,7 @@ export const Properties: FC<PropertiesProps> = ({ onRequestRemove }) => {
       <p className="panel-hint panel-hint-foot">
         Click a stem to edit it. Right-click for order and duplicate.
       </p>
+      </fieldset>
     </aside>
   );
 };

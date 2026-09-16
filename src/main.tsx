@@ -14,13 +14,14 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { useVase } from './store/store';
 import { resolveBootDoc } from './persistence';
+import { registerPwa } from './pwa';
 // theme.css first: it declares the custom properties the other two consume.
 import './styles/theme.css';
 import './styles/base.css';
 import './styles/panel.css';
 
 const boot = resolveBootDoc(window.location.hash);
-useVase.getState().loadDoc(boot.doc, { resetHistory: true });
+useVase.getState().loadDoc(boot.doc, { resetHistory: true, source: 'boot' });
 
 if (boot.dropped > 0) {
   useVase
@@ -41,3 +42,5 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+registerPwa();

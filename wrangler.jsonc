@@ -1,8 +1,24 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "vase",
+  "main": "./worker/index.ts",
   "compatibility_date": "2026-09-10",
   "assets": {
-    "directory": "./dist"
-  }
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "VASE_ROOM",
+        "class_name": "VaseRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["VaseRoom"]
+    }
+  ]
 }
